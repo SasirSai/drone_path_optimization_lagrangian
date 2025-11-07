@@ -49,26 +49,23 @@ def _ensure_min_dataset(df: pd.DataFrame, min_rows: int = 24) -> pd.DataFrame:
     df_aug = pd.concat([df, pd.DataFrame(reps)], ignore_index=True)
     return df_aug.reset_index(drop=True)
 
-def load_and_prepare_data(log_path: str = "data/optimization_logs.csv"):
+def load_and_prepare_data(path: str = "data/training_data.csv"):
     """
-    Loads Member-1 optimizer logs (no header), builds a clean dataset,
-    saves it to data/training_data.csv, and returns train/test splits.
+    Loads the MAIN dataset (3000+ rows) generated earlier.
+    Does NOT augment or reduce data.
+    Returns proper train/test split.
     """
-    if not os.path.exists(log_path):
-        # create an empty df; the helper will synthesize data
-        df = pd.DataFrame(columns=COLS)
-    else:
-        # logs have no header; assign names explicitly
-        df = pd.read_csv(log_path, names=COLS)
 
-    df = _ensure_min_dataset(df, min_rows=24)
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"❌ Dataset not found at {path}.\n"
+            "Make sure your 3000-row training_data.csv is inside /data."
+        )
 
-    # Features and target
+    df = pd.read_csv(path)
+
+    # Select the correct columns
     X = df[["start_x","start_y","end_x","end_y","num_obstacles","lambda_avg"]].astype(float)
     y = df["cost"].astype(float)
 
-    # persist cleaned dataset for reference
-    os.makedirs("data", exist_ok=True)
-    df.to_csv("data/training_data.csv", index=False)
-
-    return train_test_split(X, y, test_size=0.2, random_state=42)
+    return train_test_split(X, y, test_size=0.25, random_state=42)
