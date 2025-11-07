@@ -3,6 +3,8 @@ from tkinter import ttk, messagebox
 import numpy as np
 from core.optimizer import generate_obstacles, lagrangian_optimizer
 from gui.visualizer import draw_environment, draw_path
+from ml.model_predict import predict_path_cost
+from ml.model_train import train_and_save_model
 
 # ---------- GUI SETUP ----------
 root = tk.Tk()
@@ -59,9 +61,32 @@ def run_optimization():
     lambda_lbl.config(text=f"λ_avg: {lam:.3f}")
 
 def predict_path():
-    # Placeholder for Member 2 integration
-    messagebox.showinfo("Predict Path (ML)",
-                        "This button will call the ML model after integration.")
+    try:
+        s = (int(start_x.get()), int(start_y.get()))
+        e = (int(end_x.get()), int(end_y.get()))
+        n = int(num_obs.get())
+    except ValueError:
+        messagebox.showerror("Input Error", "Please enter valid numeric inputs.")
+        return
+
+    try:
+        # try to reuse λ shown by optimizer; fallback to 3.0 if not available yet
+        lam_text = lambda_lbl.cget("text").replace("λ_avg:", "").strip()
+        lam_val = float(lam_text) if lam_text and lam_text != "-" else 3.0
+
+        pred_cost = predict_path_cost(s, e, n, lam_val)
+        messagebox.showinfo("ML Prediction", f"Predicted optimal cost ≈ {pred_cost:.2f}")
+        # also reflect it in the status area without overwriting the actual optimized cost
+        cost_lbl.config(text=f"Predicted Cost: {pred_cost:.2f}")
+    except Exception as ex:
+        messagebox.showerror("Prediction Error", str(ex))
+
+def train_ml_now():
+    try:
+        train_and_save_model()
+        messagebox.showinfo("ML Training", "Training finished and model saved.\nCheck results/prediction_comparison.png")
+    except Exception as ex:
+        messagebox.showerror("ML Training Error", str(ex))
 
 # buttons
 opt_btn = ttk.Button(top_frame, text="Run Optimization", command=run_optimization)
@@ -69,5 +94,9 @@ opt_btn.grid(row=0, column=8, padx=10)
 
 pred_btn = ttk.Button(top_frame, text="Predict Path (ML)", command=predict_path)
 pred_btn.grid(row=0, column=9, padx=10)
+
+train_btn = ttk.Button(top_frame, text="Train / Update ML", command=train_ml_now)
+train_btn.grid(row=0, column=10, padx=10)
+
 
 root.mainloop()
